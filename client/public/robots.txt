@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /poruke/
+Disallow: /profil/
+
+Sitemap: http://localhost:3001/api/sitemap.xml
