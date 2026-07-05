@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { User } from '@zavrsi-mi/shared';
 import { api } from '../services/api';
+import { disconnectSocket } from '../services/socket';
 
 interface AuthState {
   user: User | null;
@@ -23,6 +24,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
+    disconnectSocket();
     localStorage.removeItem('token');
     api.post('/auth/logout').catch(() => {});
     set({ user: null, token: null });

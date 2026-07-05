@@ -1,13 +1,51 @@
 import { Helmet } from 'react-helmet-async';
-import { CheckCircle, Shield, Star, Phone, Mail } from 'lucide-react';
+import { CheckCircle, Shield, ShieldCheck, Star, Phone, Mail, Headphones, type LucideIcon } from 'lucide-react';
 import { REPUTATION_LABELS, UserReputation, Verification } from '@zavrsi-mi/shared';
 import clsx from 'clsx';
+
+const STAFF_ROLES = ['admin', 'moderator', 'podrska'] as const;
+type StaffRole = typeof STAFF_ROLES[number];
+
+const ROLE_BADGE_CONFIG: Record<StaffRole, { label: string; Icon: LucideIcon; className: string }> = {
+  admin: {
+    label: 'Administrator',
+    Icon: Shield,
+    className: 'bg-red-500/10 text-red-700 border-red-400/30 shadow-[0_0_10px_rgba(239,68,68,0.2)] dark:bg-red-500/15 dark:text-red-300 dark:border-red-400/35 dark:shadow-[0_0_14px_rgba(239,68,68,0.28)]',
+  },
+  moderator: {
+    label: 'Moderator',
+    Icon: ShieldCheck,
+    className: 'bg-emerald-500/10 text-emerald-700 border-emerald-400/30 shadow-[0_0_10px_rgba(16,185,129,0.2)] dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/35 dark:shadow-[0_0_14px_rgba(16,185,129,0.28)]',
+  },
+  podrska: {
+    label: 'Podr\u0161ka',
+    Icon: Headphones,
+    className: 'bg-amber-500/10 text-amber-800 border-amber-400/30 shadow-[0_0_10px_rgba(245,158,11,0.2)] dark:bg-amber-500/15 dark:text-amber-200 dark:border-amber-400/35 dark:shadow-[0_0_14px_rgba(245,158,11,0.28)]',
+  },
+};
+
+export function RoleBadge({ role, size = 'sm' }: { role?: string | null; size?: 'sm' | 'md' }) {
+  if (!role || !STAFF_ROLES.includes(role as StaffRole)) return null;
+  const cfg = ROLE_BADGE_CONFIG[role as StaffRole];
+  const iconSize = size === 'sm' ? 11 : 13;
+  return (
+    <span className={clsx(
+      'inline-flex items-center gap-1 rounded-full font-semibold border',
+      size === 'md' ? 'text-xs px-2.5 py-1' : 'text-[10px] px-2 py-0.5',
+      cfg.className
+    )}>
+      <cfg.Icon size={iconSize} />
+      {cfg.label}
+    </span>
+  );
+}
 
 interface UserBadgesProps {
   emailVerified?: boolean;
   phoneVerified?: boolean;
   verifications?: Verification[];
   reputation?: UserReputation;
+  role?: string | null;
   averageRating?: number;
   completedJobs?: number;
   size?: 'sm' | 'md';
@@ -18,6 +56,7 @@ export function UserBadges({
   phoneVerified,
   verifications,
   reputation,
+  role,
   averageRating,
   completedJobs,
   size = 'sm',
@@ -26,6 +65,7 @@ export function UserBadges({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
+      <RoleBadge role={role} size={size} />
       {emailVerified && (
         <span className="badge-verified" title="Potvrđen email">
           <Mail size={iconSize} /> Email

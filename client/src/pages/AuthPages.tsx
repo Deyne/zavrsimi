@@ -94,10 +94,9 @@ export default function LoginPage() {
 }
 
 export function RegisterPage() {
-  const [searchParams] = useSearchParams();
   const [form, setForm] = useState({
     email: '', password: '', firstName: '', lastName: '', city: '',
-    role: searchParams.get('role') === 'provider' ? 'provider' : 'user',
+    role: 'user',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -136,17 +135,6 @@ export function RegisterPage() {
 
           <div className="card p-8">
             {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-xl text-sm">{error}</div>}
-
-            <div className="flex gap-2 mb-6">
-              <button type="button" onClick={() => setForm(f => ({ ...f, role: 'user' }))}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${form.role === 'user' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                Tražim uslugu
-              </button>
-              <button type="button" onClick={() => setForm(f => ({ ...f, role: 'provider' }))}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${form.role === 'provider' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                Pružam uslugu
-              </button>
-            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">

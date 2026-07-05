@@ -13,6 +13,8 @@ const ACTION_LABELS: Record<string, string> = {
   listing_active: 'Odobren oglas',
   listing_rejected: 'Odbijen oglas',
   listing_pending: 'Oglas vraćen na proveru',
+  forum_topic_created: 'Nova forum tema',
+  forum_reply_created: 'Odgovor na forum temi',
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -44,6 +46,10 @@ async function resolveTargetName(targetType?: string | null, targetId?: string |
   if (targetType === 'listing') {
     const l = await queryOne<{ title: string }>('SELECT title FROM listings WHERE id = $1', [targetId]);
     return l ? `"${l.title}"` : '';
+  }
+  if (targetType === 'forum_topic') {
+    const t = await queryOne<{ title: string }>('SELECT title FROM forum_topics WHERE id = $1', [targetId]);
+    return t ? `"${t.title}"` : '';
   }
   return '';
 }
@@ -95,6 +101,10 @@ export async function describeActivityLog(log: {
       return `${actor} (${actorRole}) je odobrio/la oglas ${target}${details.note ? `. Napomena: ${details.note}` : ''}.`;
     case 'listing_rejected':
       return `${actor} (${actorRole}) je odbio/la oglas ${target}. Razlog: ${details.note || '—'}.`;
+    case 'forum_topic_created':
+      return `${actor} (${actorRole}) je objavio/la forum temu "${details.title || target}" u sekciji ${details.section || '—'}.`;
+    case 'forum_reply_created':
+      return `${actor} (${actorRole}) je odgovorio/la na forum temu ${target}.`;
     default:
       return `${actor} (${actorRole}): ${action}${target ? ` — ${target}` : ''}${Object.keys(details).length ? `. Detalji: ${Object.entries(details).map(([k, v]) => `${k}: ${v}`).join(', ')}` : ''}`;
   }
@@ -119,6 +129,9 @@ export async function getActivityLogs(page = 1, limit = 50, filters?: {
   userId?: string;
   action?: string;
   role?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }) {
   const offset = (page - 1) * limit;
   const conditions: string[] = ['1=1'];
@@ -130,12 +143,32 @@ export async function getActivityLogs(page = 1, limit = 50, filters?: {
     params.push(filters.userId);
   }
   if (filters?.action) {
-    conditions.push(`al.action ILIKE $${idx++}`);
-    params.push(`%${filters.action}%`);
+    const actions = filters.action.split(',').map(a => a.trim()).filter(Boolean);
+    if (actions.length === 1) {
+      conditions.push(`al.action = $${idx++}`);
+      params.push(actions[0]);
+    } else if (actions.length > 1) {
+      conditions.push(`al.action = ANY($${idx++}::text[])`);
+      params.push(actions);
+    }
   }
   if (filters?.role) {
     conditions.push(`al.user_role = $${idx++}`);
     params.push(filters.role);
+  }
+  if (filters?.search) {
+    const term = `%${filters.search.trim()}%`;
+    conditions.push(`(u.first_name ILIKE $${idx} OR u.last_name ILIKE $${idx} OR u.email ILIKE $${idx} OR CONCAT(u.first_name, ' ', u.last_name) ILIKE $${idx})`);
+    params.push(term);
+    idx++;
+  }
+  if (filters?.dateFrom) {
+    conditions.push(`al.created_at >= $${idx++}::timestamptz`);
+    params.push(filters.dateFrom);
+  }
+  if (filters?.dateTo) {
+    conditions.push(`al.created_at < ($${idx++}::date + INTERVAL '1 day')`);
+    params.push(filters.dateTo);
   }
 
   params.push(limit, offset);
@@ -151,7 +184,10 @@ export async function getActivityLogs(page = 1, limit = 50, filters?: {
   );
 
   const countRow = await queryOne<{ count: string }>(
-    `SELECT COUNT(*) as count FROM activity_logs al WHERE ${conditions.join(' AND ')}`,
+    `SELECT COUNT(*) as count
+     FROM activity_logs al
+     JOIN users u ON u.id = al.user_id
+     WHERE ${conditions.join(' AND ')}`,
     params.slice(0, params.length - 2)
   );
 

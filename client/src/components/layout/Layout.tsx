@@ -247,7 +247,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {pendingListings > 0 && (
         <Link
           to="/profil"
-          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-yellow-500 text-yellow-950 text-sm font-semibold shadow-lg hover:bg-yellow-400 transition-colors"
+          className="fixed bottom-24 right-5 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-yellow-500 text-yellow-950 text-sm font-semibold shadow-lg hover:bg-yellow-400 transition-colors"
         >
           <AlertTriangle size={16} />
           {pendingListings} {pendingListings === 1 ? 'oglas' : 'oglasa'} na čekanju

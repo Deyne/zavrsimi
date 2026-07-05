@@ -15,11 +15,17 @@ router.get('/', optionalAuth, async (req: Request, res: Response) => {
 });
 
 router.post('/', authenticate, runValidations([
-  body('section').isIn(['preporuke', 'iskustva', 'pitanja', 'opste']),
-  body('title').trim().isLength({ min: 5, max: 200 }),
-  body('content').trim().isLength({ min: 20 }),
+  body('section').isIn(['preporuke', 'iskustva', 'pitanja', 'opste']).withMessage('Izaberite validnu sekciju'),
+  body('title').trim().isLength({ min: 5, max: 200 }).withMessage('Naslov mora imati između 5 i 200 karaktera'),
+  body('content').trim().isLength({ min: 20 }).withMessage('Sadržaj mora imati najmanje 20 karaktera'),
 ]), async (req: Request, res: Response) => {
-  const topic = await forumService.createTopic(req.authUser!.id, req.body.section, req.body.title, req.body.content);
+  const topic = await forumService.createTopic(
+    req.authUser!.id,
+    req.body.section,
+    req.body.title,
+    req.body.content,
+    req.authUser!.role
+  );
   res.status(201).json(topic);
 });
 
@@ -69,8 +75,16 @@ router.get('/:id', optionalAuth, async (req: Request, res: Response) => {
 
 router.post('/:id/replies', authenticate, runValidations([
   body('content').trim().isLength({ min: 5 }),
+  body('quoteText').optional().trim().isLength({ max: 1000 }),
+  body('quoteAuthorName').optional().trim().isLength({ max: 200 }),
 ]), async (req: Request, res: Response) => {
-  const reply = await forumService.createReply(req.params.id, req.authUser!.id, req.body.content);
+  const reply = await forumService.createReply(
+    req.params.id,
+    req.authUser!.id,
+    req.body.content,
+    req.authUser!.role,
+    req.body.quoteText ? { text: req.body.quoteText, authorName: req.body.quoteAuthorName } : undefined
+  );
   res.status(201).json(reply);
 });
 

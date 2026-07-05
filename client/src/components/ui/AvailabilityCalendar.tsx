@@ -25,9 +25,10 @@ const STATUS_CYCLE: AvailStatus[] = ['free', 'busy', 'vacation'];
 interface AvailabilityCalendarProps {
   userId: string;
   editable?: boolean;
+  compact?: boolean;
 }
 
-export function AvailabilityCalendar({ userId, editable }: AvailabilityCalendarProps) {
+export function AvailabilityCalendar({ userId, editable, compact }: AvailabilityCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [entries, setEntries] = useState<Record<string, AvailStatus>>({});
   const toast = useToast();
@@ -69,24 +70,32 @@ export function AvailabilityCalendar({ userId, editable }: AvailabilityCalendarP
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-gray-100 rounded-lg">
-          <ChevronLeft size={20} />
+    <div className={clsx('mx-auto w-full', compact ? 'max-w-lg' : 'max-w-xl')}>
+      <div className={clsx('flex items-center justify-between', compact ? 'mb-4' : 'mb-4')}>
+        <button
+          onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+          className={clsx('hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg', compact ? 'p-1.5' : 'p-2')}
+        >
+          <ChevronLeft size={compact ? 18 : 20} />
         </button>
-        <h3 className="font-semibold capitalize">{format(currentMonth, 'MMMM yyyy', { locale: sr })}</h3>
-        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-gray-100 rounded-lg">
-          <ChevronRight size={20} />
+        <h3 className={clsx('font-semibold capitalize', compact ? 'text-base' : 'text-lg')}>
+          {format(currentMonth, 'MMMM yyyy', { locale: sr })}
+        </h3>
+        <button
+          onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+          className={clsx('hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg', compact ? 'p-1.5' : 'p-2')}
+        >
+          <ChevronRight size={compact ? 18 : 20} />
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 mb-2">
+      <div className={clsx('grid grid-cols-7', compact ? 'gap-1.5 mb-2' : 'gap-1 mb-2')}>
         {['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'].map(d => (
-          <div key={d} className="text-center text-xs font-medium text-gray-500 py-1">{d}</div>
+          <div key={d} className={clsx('text-center font-medium text-gray-500 py-1', compact ? 'text-xs' : 'text-xs')}>{d}</div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className={clsx('grid grid-cols-7', compact ? 'gap-1.5' : 'gap-1')}>
         {Array.from({ length: startPad }).map((_, i) => <div key={`pad-${i}`} />)}
         {days.map(day => {
           const key = format(day, 'yyyy-MM-dd');
@@ -98,7 +107,8 @@ export function AvailabilityCalendar({ userId, editable }: AvailabilityCalendarP
               onClick={() => toggleDay(day)}
               disabled={!editable}
               className={clsx(
-                'aspect-square rounded-lg text-xs font-medium flex items-center justify-center transition-colors',
+                'aspect-square rounded-lg font-medium flex items-center justify-center transition-colors',
+                compact ? 'text-base min-h-[2.75rem]' : 'text-sm',
                 cfg.bg, cfg.color,
                 !isSameMonth(day, currentMonth) && 'opacity-30',
                 isToday(day) && 'ring-2 ring-brand-500',
@@ -111,15 +121,15 @@ export function AvailabilityCalendar({ userId, editable }: AvailabilityCalendarP
         })}
       </div>
 
-      <div className="flex flex-wrap gap-3 mt-4">
+      <div className={clsx('flex flex-wrap justify-center gap-2', compact ? 'mt-3' : 'mt-4')}>
         {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-          <span key={key} className={clsx('text-xs px-2 py-1 rounded-full', cfg.bg, cfg.color)}>
+          <span key={key} className={clsx('text-xs px-2.5 py-1 rounded-full', cfg.bg, cfg.color)}>
             {cfg.label}
           </span>
         ))}
       </div>
       {editable && (
-        <p className="text-xs text-gray-500 mt-2">Kliknite na dan da promenite status</p>
+        <p className="text-xs text-gray-500 mt-2 text-center">Kliknite na dan da promenite status</p>
       )}
     </div>
   );

@@ -150,6 +150,9 @@ router.get('/logs', requireRole('admin'), async (req: Request, res: Response) =>
     userId: req.query.userId as string,
     action: req.query.action as string,
     role: req.query.role as string,
+    search: req.query.search as string,
+    dateFrom: req.query.dateFrom as string,
+    dateTo: req.query.dateTo as string,
   });
   res.json(result);
 });

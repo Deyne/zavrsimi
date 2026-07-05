@@ -9,7 +9,8 @@
     "shared"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client:wait\"",
+    "dev:client:wait": "node -e \"const h=require('http');(function p(n){h.get('http://127.0.0.1:3001/api/health',r=>{if(r.statusCode===200)process.exit(0);if(n>120)process.exit(1);setTimeout(()=>p(n+1),500)}).on('error',()=>{if(n>120)process.exit(1);setTimeout(()=>p(n+1),500)})})(0)\" && npm run dev:client",
     "dev:server": "npm run dev --workspace=server",
     "dev:client": "npm run dev --workspace=client",
     "build": "npm install && npm run build --workspace=shared && npm run build --workspace=server && npm run build --workspace=client",

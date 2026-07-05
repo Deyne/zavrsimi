@@ -2,11 +2,15 @@ import { query, queryOne } from '../database';
 import { logActivity } from './activityLogService';
 import { ForumSection } from '@zavrsi-mi/shared';
 
-export async function createTopic(userId: string, section: ForumSection, title: string, content: string) {
-  return queryOne(
+export async function createTopic(userId: string, section: ForumSection, title: string, content: string, userRole = 'user') {
+  const topic = await queryOne(
     'INSERT INTO forum_topics (user_id, section, title, content) VALUES ($1, $2, $3, $4) RETURNING *',
     [userId, section, title, content]
   );
+  if (topic) {
+    await logActivity(userId, userRole, 'forum_topic_created', 'forum_topic', (topic as { id: string }).id, { title, section });
+  }
+  return topic;
 }
 
 export async function getTopics(section?: ForumSection, page = 1, limit = 20) {
@@ -36,13 +40,13 @@ export async function getTopicById(id: string) {
   await query('UPDATE forum_topics SET view_count = view_count + 1 WHERE id = $1', [id]);
 
   const topic = await queryOne(
-    `SELECT t.*, u.first_name, u.last_name, u.avatar_url, u.reputation
+    `SELECT t.*, u.first_name, u.last_name, u.avatar_url, u.reputation, u.role
      FROM forum_topics t JOIN users u ON u.id = t.user_id WHERE t.id = $1`,
     [id]
   );
 
   const replies = await query(
-    `SELECT r.*, u.first_name, u.last_name, u.avatar_url
+    `SELECT r.*, u.first_name, u.last_name, u.avatar_url, u.reputation, u.role
      FROM forum_replies r JOIN users u ON u.id = r.user_id
      WHERE r.topic_id = $1 ORDER BY r.created_at ASC`,
     [id]
@@ -51,16 +55,27 @@ export async function getTopicById(id: string) {
   return { topic, replies };
 }
 
-export async function createReply(topicId: string, userId: string, content: string) {
+export async function createReply(
+  topicId: string,
+  userId: string,
+  content: string,
+  userRole = 'user',
+  quote?: { text?: string; authorName?: string }
+) {
   const reply = await queryOne(
-    'INSERT INTO forum_replies (topic_id, user_id, content) VALUES ($1, $2, $3) RETURNING *',
-    [topicId, userId, content]
+    `INSERT INTO forum_replies (topic_id, user_id, content, quote_text, quote_author_name)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [topicId, userId, content, quote?.text?.trim() || null, quote?.authorName?.trim() || null]
   );
 
   await query(
     'UPDATE forum_topics SET reply_count = reply_count + 1, updated_at = NOW() WHERE id = $1',
     [topicId]
   );
+
+  if (reply) {
+    await logActivity(userId, userRole, 'forum_reply_created', 'forum_topic', topicId, { contentLength: content.length });
+  }
 
   return reply;
 }
@@ -230,8 +245,11 @@ export async function getProvidersDirectory(trade?: string, city?: string) {
 }
 
 export async function ensurePlatformOwner() {
-  const email = process.env.PLATFORM_OWNER_EMAIL?.toLowerCase().trim();
-  if (!email) return;
+  const placeholder = 'tvoj-email@example.com';
+  const configured = process.env.PLATFORM_OWNER_EMAIL?.toLowerCase().trim();
+  const email = !configured || configured === placeholder
+    ? 'admin@zavrsimi.rs'
+    : configured;
 
   await query('UPDATE users SET is_platform_owner = false WHERE is_platform_owner = true AND LOWER(email) != $1', [email]);
   await query(
@@ -268,7 +286,7 @@ export async function getUsers(page = 1, limit = 20, search?: string) {
   const params = search ? [limit, offset, `%${search}%`] : [limit, offset];
 
   return query(
-    `SELECT id, email, role, trade, first_name, last_name, city, address, phone, bio, is_suspended, is_platform_owner, created_at
+    `SELECT id, email, role, trade, first_name, last_name, city, address, phone, bio, avatar_url, is_suspended, is_platform_owner, created_at
      FROM users ${conditions}
      ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
     params
@@ -334,7 +352,7 @@ export async function updateUserAdmin(adminId: string, userId: string, data: {
     return getUserById(userId);
   }
 
-  const allowedRoles = ['user', 'provider', 'moderator', 'admin'];
+  const allowedRoles = ['user', 'provider', 'moderator', 'admin', 'podrska'];
   if (data.role && !allowedRoles.includes(data.role)) {
     throw new Error('Neispravna uloga');
   }
@@ -395,6 +413,11 @@ export async function updateUserAdmin(adminId: string, userId: string, data: {
   );
 
   if (!user) throw new Error('Korisnik nije pronađen');
+
+  if (data.role !== undefined) {
+    const { syncStaffRoomAccess } = await import('./messageService');
+    await syncStaffRoomAccess(userId, (user as { role: string }).role);
+  }
 
   await logActivity(adminId, 'admin', 'user_updated', 'user', userId, {
     ...data,

@@ -1,34 +1,45 @@
 import { useEffect, useState, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { User as UserIcon, Camera, MapPin, Shield, Star, Calendar, Mail, Phone } from 'lucide-react';
-import { User } from '@zavrsi-mi/shared';
+import { Link } from 'react-router-dom';
+import { User as UserIcon, Camera, MapPin, Shield, Star, Calendar, Mail, Phone, Lock, Briefcase } from 'lucide-react';
+import { User, Listing } from '@zavrsi-mi/shared';
 import { Layout } from '../components/layout/Layout';
 import { UserBadges, StarRating } from '../components/ui/Badges';
+import { ListingCard } from '../components/ui/ListingCard';
 import { AvailabilityCalendar } from '../components/ui/AvailabilityCalendar';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../components/ui/Toast';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../services/api';
-import { REPUTATION_LABELS, UserReputation } from '@zavrsi-mi/shared';
-import { useNavigate } from 'react-router-dom';
+import clsx from 'clsx';
+
+type ProfileTab = 'profil' | 'verifikacija' | 'dostupnost' | 'oglasi' | 'ocene' | 'bezbednost';
+
+interface ProfileReview {
+  id: string;
+  rating: number;
+  comment: string;
+  listing: { id: string; title: string } | null;
+  reviewer: { firstName: string; lastName: string };
+}
 
 export default function ProfilePage() {
   const { user, fetchUser, updateUser } = useAuthStore();
-  const navigate = useNavigate();
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', bio: '', city: '', address: '' });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' });
-  const [reviews, setReviews] = useState<{ rating: number; comment: string; reviewer: { firstName: string; lastName: string } }[]>([]);
+  const [reviews, setReviews] = useState<ProfileReview[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [verifyModal, setVerifyModal] = useState<'email' | 'phone' | null>(null);
   const [verifyCode, setVerifyCode] = useState('');
   const [devCode, setDevCode] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
+  const [activeTab, setActiveTab] = useState<ProfileTab>('profil');
 
   useEffect(() => {
     if (!user) fetchUser();
-    else if (user.role !== 'admin') { /* ok */ }
   }, [user, fetchUser]);
 
   useEffect(() => {
@@ -39,8 +50,8 @@ export default function ProfilePage() {
       city: user.city || '', address: user.address || '',
     });
     setPhoneInput(user.phone || '');
-    api.get<{ rating: number; comment: string; reviewer: { firstName: string; lastName: string } }[]>(`/reviews/user/${user.id}`)
-      .then(setReviews).catch(() => {});
+    api.get<ProfileReview[]>(`/reviews/user/${user.id}`).then(setReviews).catch(() => {});
+    api.get<{ listings: Listing[] }>('/listings/my').then(r => setListings(r.listings)).catch(() => {});
   }, [user]);
 
   const saveProfile = async () => {
@@ -120,6 +131,15 @@ export default function ProfilePage() {
 
   if (!user) return <Layout><div className="p-16 text-center">Učitavanje...</div></Layout>;
 
+  const tabs: { id: ProfileTab; label: string; icon: typeof UserIcon; count?: number }[] = [
+    { id: 'profil', label: 'Profil', icon: UserIcon },
+    { id: 'verifikacija', label: 'Verifikacija', icon: Shield },
+    { id: 'dostupnost', label: 'Dostupnost', icon: Calendar },
+    { id: 'oglasi', label: 'Aktivni oglasi', icon: Briefcase, count: listings.length },
+    { id: 'ocene', label: 'Ocene', icon: Star, count: reviews.length },
+    { id: 'bezbednost', label: 'Bezbednost', icon: Lock },
+  ];
+
   return (
     <Layout>
       <Helmet><title>Moj profil</title></Helmet>
@@ -150,26 +170,55 @@ export default function ProfilePage() {
                   phoneVerified={user.phoneVerified}
                   verifications={user.verifications}
                   reputation={user.reputation}
+                  role={user.role}
                   averageRating={user.averageRating}
                   completedJobs={user.completedJobs}
                   size="md"
                 />
               </div>
-              {user.reputation && (
-                <p className="text-sm text-brand-600 font-medium mt-2">{REPUTATION_LABELS[user.reputation as UserReputation]}</p>
-              )}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => navigate(`/korisnik/${user.id}`)} className="btn-secondary text-sm">Javni profil</button>
-              <button onClick={() => setEditing(!editing)} className="btn-secondary text-sm">
+              <button
+                onClick={() => {
+                  if (!editing) setActiveTab('profil');
+                  setEditing(!editing);
+                }}
+                className="btn-secondary text-sm"
+              >
                 {editing ? 'Otkaži' : 'Izmeni'}
               </button>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="card p-6">
+        <nav className="flex flex-wrap gap-1.5 mb-6 p-1.5 bg-gray-100/80 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={clsx(
+                'nav-link flex-1 sm:flex-none justify-center min-w-[calc(50%-0.375rem)] sm:min-w-0',
+                activeTab === tab.id ? 'nav-link-active' : 'nav-link-idle'
+              )}
+            >
+              <tab.icon size={16} />
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className={clsx(
+                  'ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold',
+                  activeTab === tab.id
+                    ? 'bg-brand-200/60 text-brand-800 dark:bg-brand-800/60 dark:text-brand-200'
+                    : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                )}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {activeTab === 'profil' && (
+          <div className="card p-6 animate-slide-up">
             <h2 className="font-bold flex items-center gap-2 mb-4"><UserIcon size={18} /> Lični podaci</h2>
             {editing ? (
               <div className="space-y-3">
@@ -190,8 +239,10 @@ export default function ProfilePage() {
               </dl>
             )}
           </div>
+        )}
 
-          <div className="card p-6">
+        {activeTab === 'verifikacija' && (
+          <div className="card p-6 animate-slide-up">
             <h2 className="font-bold flex items-center gap-2 mb-4"><Shield size={18} /> Verifikacija</h2>
             <div className="space-y-2">
               {[
@@ -216,38 +267,70 @@ export default function ProfilePage() {
               ))}
             </div>
           </div>
+        )}
 
-          {(user.role === 'provider' || user.role === 'user') && (
-            <div className="card p-6 md:col-span-2">
-              <h2 className="font-bold flex items-center gap-2 mb-4"><Calendar size={18} /> Kalendar dostupnosti</h2>
-              <AvailabilityCalendar userId={user.id} editable />
-            </div>
-          )}
-
-          <div className="card p-6">
-            <h2 className="font-bold mb-4">Promena lozinke</h2>
-            <div className="space-y-3">
-              <input type="password" className="input" placeholder="Trenutna lozinka" value={passwordForm.currentPassword}
-                onChange={e => setPasswordForm(f => ({ ...f, currentPassword: e.target.value }))} />
-              <input type="password" className="input" placeholder="Nova lozinka" value={passwordForm.newPassword}
-                onChange={e => setPasswordForm(f => ({ ...f, newPassword: e.target.value }))} />
-              <button onClick={changePassword} className="btn-secondary w-full">Promeni lozinku</button>
-            </div>
+        {activeTab === 'dostupnost' && (
+          <div className="card p-6 animate-slide-up">
+            <h2 className="font-bold flex items-center gap-2 mb-4"><Calendar size={18} /> Kalendar dostupnosti</h2>
+            <p className="text-sm text-gray-500 mb-4 text-center">Označite dane kada ste slobodni, zauzeti ili na godišnjem odmoru.</p>
+            <AvailabilityCalendar userId={user.id} editable compact />
           </div>
+        )}
 
-          <div className="card p-6">
+        {activeTab === 'oglasi' && (
+          <div className="animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold flex items-center gap-2"><Briefcase size={18} /> Aktivni oglasi ({listings.length})</h2>
+              <Link to="/objavi" className="btn-primary text-sm">Novi oglas</Link>
+            </div>
+            {listings.length === 0 ? (
+              <div className="card p-8 text-center">
+                <p className="text-sm text-gray-500 mb-4">Nemate aktivnih oglasa</p>
+                <Link to="/objavi" className="btn-primary text-sm">Objavi oglas</Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {listings.map(l => <ListingCard key={l.id} listing={l} />)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'ocene' && (
+          <div className="card p-6 animate-slide-up">
             <h2 className="font-bold flex items-center gap-2 mb-4"><Star size={18} /> Ocene ({reviews.length})</h2>
             {reviews.length === 0 ? (
               <p className="text-sm text-gray-500">Još nema ocena</p>
-            ) : reviews.slice(0, 5).map((r, i) => (
-              <div key={i} className="py-3 border-b border-gray-100 last:border-0">
+            ) : reviews.map(r => (
+              <div key={r.id} className="py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
                 <StarRating rating={r.rating} size={14} />
-                <p className="text-sm mt-1">{r.comment}</p>
+                {r.listing && (
+                  <p className="text-xs text-brand-600 dark:text-brand-400 mt-1.5">
+                    Posao:{' '}
+                    <Link to={`/oglas/${r.listing.id}`} className="font-medium hover:underline">
+                      {r.listing.title}
+                    </Link>
+                  </p>
+                )}
+                {r.comment && <p className="text-sm mt-1">{r.comment}</p>}
                 <p className="text-xs text-gray-500 mt-1">{r.reviewer.firstName} {r.reviewer.lastName}</p>
               </div>
             ))}
           </div>
-        </div>
+        )}
+
+        {activeTab === 'bezbednost' && (
+          <div className="card p-6 animate-slide-up">
+            <h2 className="font-bold flex items-center gap-2 mb-4"><Lock size={18} /> Promena lozinke</h2>
+            <div className="space-y-3 max-w-md">
+              <input type="password" className="input" placeholder="Trenutna lozinka" value={passwordForm.currentPassword}
+                onChange={e => setPasswordForm(f => ({ ...f, currentPassword: e.target.value }))} />
+              <input type="password" className="input" placeholder="Nova lozinka" value={passwordForm.newPassword}
+                onChange={e => setPasswordForm(f => ({ ...f, newPassword: e.target.value }))} />
+              <button onClick={changePassword} className="btn-secondary w-full sm:w-auto">Promeni lozinku</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Modal

@@ -4,6 +4,12 @@ import { config } from '../config';
 import { AuthUser } from '../middleware/auth';
 import * as messageService from '../services/messageService';
 
+const SUPPORT_STAFF_ROLES = ['admin', 'moderator', 'podrska'];
+
+function isSupportStaff(role: string) {
+  return SUPPORT_STAFF_ROLES.includes(role);
+}
+
 interface AuthenticatedSocket extends Socket {
   user?: AuthUser;
 }
@@ -25,7 +31,10 @@ export function setupSocket(io: Server) {
     const userId = socket.user!.id;
 
     socket.join(`user:${userId}`);
-    messageService.setUserOnline(userId, true);
+    if (isSupportStaff(socket.user!.role)) {
+      socket.join('staff:support');
+    }
+    messageService.setUserOnline(userId, true).catch(() => {});
     io.emit('user:online', { userId, isOnline: true });
 
     socket.on('conversation:join', (conversationId: string) => {
@@ -75,7 +84,7 @@ export function setupSocket(io: Server) {
     });
 
     socket.on('disconnect', () => {
-      messageService.setUserOnline(userId, false);
+      messageService.setUserOnline(userId, false).catch(() => {});
       io.emit('user:online', { userId, isOnline: false });
     });
   });

@@ -22,7 +22,7 @@ import { ensurePlatformOwner } from './services/forumService';
 import authRoutes from './routes/auth';
 import listingRoutes from './routes/listings';
 import reviewRoutes from './routes/reviews';
-import messageRoutes from './routes/messages';
+import messageRoutes, { supportRouter } from './routes/messages';
 import forumRoutes from './routes/forum';
 import usersRoutes from './routes/users';
 import adminRoutes from './routes/admin';
@@ -81,6 +81,7 @@ app.use('/api/auth', usersRoutes);
 app.use('/api/listings', listingRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/support', supportRouter);
 app.use('/api/forum', forumRoutes);
 app.use('/api/admin', adminRoutes);
 

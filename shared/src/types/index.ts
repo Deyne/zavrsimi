@@ -1,5 +1,5 @@
-export type UserRole = 'guest' | 'user' | 'provider' | 'moderator' | 'admin';
-export type UserReputation = 'novi_clan' | 'pouzdan_clan' | 'proveren_clan' | 'ekspert' | 'elitni_majstor';
+export type UserRole = 'guest' | 'user' | 'provider' | 'moderator' | 'admin' | 'podrska';
+export type UserReputation = 'novi_clan' | 'pouzdan_clan' | 'proveren_clan' | 'ekspert' | 'elitni_majstor' | 'aktivan_clan' | 'veteran';
 export type ListingType = 'offer' | 'request' | 'sos';
 export type ListingStatus = 'draft' | 'pending' | 'active' | 'paused' | 'completed' | 'rejected' | 'expired';
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn';
@@ -167,11 +167,13 @@ export interface SearchFilters {
 }
 
 export const REPUTATION_LABELS: Record<UserReputation, string> = {
-  novi_clan: 'Novi član',
-  pouzdan_clan: 'Pouzdan član',
-  proveren_clan: 'Proveren član',
+  novi_clan: 'Novi \u010dlan',
+  pouzdan_clan: 'Pouzdan \u010dlan',
+  proveren_clan: 'Proveren \u010dlan',
+  aktivan_clan: 'Aktivan \u010dlan',
   ekspert: 'Ekspert',
   elitni_majstor: 'Elitni majstor',
+  veteran: 'Veteran',
 };
 
 export const FORUM_SECTION_LABELS: Record<ForumSection, string> = {

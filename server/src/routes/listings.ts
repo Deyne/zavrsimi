@@ -87,6 +87,12 @@ router.get('/my/pending-count', authenticate, async (req: Request, res: Response
   res.json({ count });
 });
 
+router.get('/my', authenticate, async (req: Request, res: Response) => {
+  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+  const listings = await listingService.getUserListings(req.authUser!.id, limit);
+  res.json({ listings });
+});
+
 router.get('/:id/bids', optionalAuth, async (req: Request, res: Response) => {
   const bids = await listingService.getBidsForListing(req.params.id);
   res.json(bids);

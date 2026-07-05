@@ -64,9 +64,11 @@ export async function getReviewsForUser(userId: string, page = 1, limit = 10) {
   const offset = (page - 1) * limit;
 
   const reviews = await query(
-    `SELECT r.*, u.first_name, u.last_name, u.avatar_url
+    `SELECT r.*, u.first_name, u.last_name, u.avatar_url,
+            l.id as listing_id, l.title as listing_title
      FROM reviews r
      JOIN users u ON u.id = r.reviewer_id
+     LEFT JOIN listings l ON l.id = r.listing_id
      WHERE r.reviewee_id = $1
      ORDER BY r.created_at DESC
      LIMIT $2 OFFSET $3`,
@@ -79,6 +81,10 @@ export async function getReviewsForUser(userId: string, page = 1, limit = 10) {
     comment: (r as { comment: string }).comment,
     isRecommended: (r as { is_recommended: boolean }).is_recommended,
     createdAt: (r as { created_at: string }).created_at,
+    listing: (r as { listing_id: string | null }).listing_id ? {
+      id: (r as { listing_id: string }).listing_id,
+      title: (r as { listing_title: string }).listing_title,
+    } : null,
     reviewer: {
       firstName: (r as { first_name: string }).first_name,
       lastName: (r as { last_name: string }).last_name,
